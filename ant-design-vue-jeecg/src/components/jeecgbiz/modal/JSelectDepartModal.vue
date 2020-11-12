@@ -1,16 +1,18 @@
 <template>
-  <a-modal
+  <j-modal
     title="选择部门"
     :width="modalWidth"
     :visible="visible"
     :confirmLoading="confirmLoading"
     @ok="handleSubmit"
     @cancel="handleCancel"
+    switchFullscreen
     cancelText="关闭">
     <a-spin tip="Loading..." :spinning="false">
       <a-input-search style="margin-bottom: 1px" placeholder="请输入部门名称按回车进行搜索" @search="onSearch" />
       <a-tree
         checkable
+        class="my-dept-select-tree"
         :treeData="treeData"
         :checkStrictly="true"
         @check="onCheck"
@@ -31,7 +33,7 @@
       </a-tree>
 
     </a-spin>
-  </a-modal>
+  </j-modal>
 </template>
 
 <script>
@@ -58,6 +60,16 @@
     watch:{
       departId(){
         this.initDepartComponent()
+      },
+      visible: {
+        handler() {
+          if (this.departId) {
+            this.checkedKeys = this.departId.split(",");
+            // console.log('this.departId', this.departId)
+          } else {
+            this.checkedKeys = [];
+          }
+        }
       }
     },
     methods:{
@@ -65,7 +77,6 @@
         this.visible=true
         this.checkedRows=[]
         this.checkedKeys=[]
-        console.log("this.multi",this.multi)
       },
       loadDepart(){
         queryDepartTreeList().then(res=>{
@@ -123,39 +134,29 @@
       },
       onCheck (checkedKeys,info) {
         if(!this.multi){
-          let arr = checkedKeys.checked.filter(item=>{
-            return this.checkedKeys.indexOf(item)<0
-          })
+          let arr = checkedKeys.checked.filter(item => this.checkedKeys.indexOf(item) < 0)
           this.checkedKeys = [...arr]
-          this.checkedRows=[info.node.dataRef]
+          this.checkedRows = (this.checkedKeys.length === 0) ? [] : [info.node.dataRef]
         }else{
           this.checkedKeys = checkedKeys.checked
-          this.checkedRows.push(info.node.dataRef)
+          this.checkedRows = this.getCheckedRows(this.checkedKeys)
         }
-        //this.$emit("input",this.checkedKeys.join(","))
-        //console.log(this.checkedKeys.join(","))
       },
-      onSelect (selectedKeys,info) {
-        console.log(selectedKeys)
+      onSelect(selectedKeys,info) {
         let keys = []
         keys.push(selectedKeys[0])
-        if(!this.checkedKeys || this.checkedKeys.length==0 || !this.multi){
+        if(!this.checkedKeys || this.checkedKeys.length===0 || !this.multi){
           this.checkedKeys = [...keys]
           this.checkedRows=[info.node.dataRef]
         }else{
           let currKey = info.node.dataRef.key
           if(this.checkedKeys.indexOf(currKey)>=0){
-            this.checkedKeys = this.checkedKeys.filter(item=>{
-              return item !=currKey
-            })
-            this.checkedRows=this.checkedRows.filter(item=>{
-              return item.key !=currKey
-            })
+            this.checkedKeys = this.checkedKeys.filter(item=> item !==currKey)
           }else{
-            this.checkedRows.push(info.node.dataRef)
             this.checkedKeys.push(...keys)
           }
         }
+        this.checkedRows = this.getCheckedRows(this.checkedKeys)
       },
       onExpand (expandedKeys) {
         this.expandedKeys = expandedKeys
@@ -205,12 +206,43 @@
         })
 
 
+      },
+      // 根据 checkedKeys 获取 rows
+      getCheckedRows(checkedKeys) {
+        const forChildren = (list, key) => {
+          for (let item of list) {
+            if (item.id === key) {
+              return item
+            }
+            if (item.children instanceof Array) {
+              let value = forChildren(item.children, key)
+              if (value != null) {
+                return value
+              }
+            }
+          }
+          return null
+        }
+
+        let rows = []
+        for (let key of checkedKeys) {
+          let row = forChildren(this.treeData, key)
+          if (row != null) {
+            rows.push(row)
+          }
+        }
+        return rows
       }
     }
   }
 
 </script>
 
-<style scoped>
+<style lang="less" scoped>
+  // 限制部门选择树高度，避免部门太多时点击确定不便
+  .my-dept-select-tree{
+    height: 350px;
+    overflow-y: scroll;
+  }
 
 </style>

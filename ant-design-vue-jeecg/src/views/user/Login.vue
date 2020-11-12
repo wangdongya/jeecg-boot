@@ -5,13 +5,13 @@
         :activeKey="customActiveKey"
         :tabBarStyle="{ textAlign: 'center', borderBottom: 'unset' }"
         @change="handleTabClick">
-        <a-tab-pane key="tab1" tab="账号密码登陆">
+        <a-tab-pane key="tab1" tab="账号密码登录">
           <a-form-item>
             <a-input
               size="large"
               v-decorator="['username',validatorRules.username,{ validator: this.handleUsernameOrEmail }]"
               type="text"
-              placeholder="请输入帐户名 / jeecg">
+              placeholder="请输入帐户名 / admin">
               <a-icon slot="prefix" type="user" :style="{ color: 'rgba(0,0,0,.25)' }"/>
             </a-input>
           </a-form-item>
@@ -28,7 +28,7 @@
           </a-form-item>
 
           <a-row :gutter="0">
-            <a-col :span="14">
+            <a-col :span="16">
               <a-form-item>
                 <a-input
                   v-decorator="['inputCode',validatorRules.inputCode]"
@@ -36,19 +36,19 @@
                   type="text"
                   @change="inputCodeChange"
                   placeholder="请输入验证码">
-                  <a-icon slot="prefix" v-if=" inputCodeContent==verifiedCode " type="smile" :style="{ color: 'rgba(0,0,0,.25)' }"/>
-                  <a-icon slot="prefix" v-else type="frown" :style="{ color: 'rgba(0,0,0,.25)' }"/>
+                  <a-icon slot="prefix" type="smile" :style="{ color: 'rgba(0,0,0,.25)' }"/>
                 </a-input>
               </a-form-item>
             </a-col>
-            <a-col  :span="10">
-              <j-graphic-code @success="generateCode" style="float: right"></j-graphic-code>
+            <a-col :span="8" style="text-align: right">
+              <img v-if="requestCodeSuccess" style="margin-top: 2px;" :src="randCodeImage" @click="handleChangeCheckCode"/>
+              <img v-else style="margin-top: 2px;" src="../../assets/checkcode.png" @click="handleChangeCheckCode"/>
             </a-col>
           </a-row>
 
 
         </a-tab-pane>
-        <a-tab-pane key="tab2" tab="手机号登陆">
+        <a-tab-pane key="tab2" tab="手机号登录">
           <a-form-item>
             <a-input
               v-decorator="['mobile',validatorRules.mobile]"
@@ -84,11 +84,11 @@
       </a-tabs>
 
       <a-form-item>
-        <a-checkbox v-model="formLogin.rememberMe">自动登陆</a-checkbox>
+        <a-checkbox v-decorator="['rememberMe', {initialValue: true, valuePropName: 'checked'}]" >自动登录</a-checkbox>
         <router-link :to="{ name: 'alteration'}" class="forge-password" style="float: right;">
           忘记密码
         </router-link>
-        <router-link :to="{ name: 'register'}" class="forge-password" style="float: right;margin-right: 10px" >
+       <router-link :to="{ name: 'register'}" class="forge-password" style="float: right;margin-right: 10px" >
           注册账户
         </router-link>
       </a-form-item>
@@ -105,15 +105,12 @@
         </a-button>
       </a-form-item>
 
-      <!-- <div class="user-login-other">
-        <span>其他登陆方式</span>
-        <a><a-icon class="item-icon" type="alipay-circle"></a-icon></a>
-        <a><a-icon class="item-icon" type="taobao-circle"></a-icon></a>
-        <a><a-icon class="item-icon" type="weibo-circle"></a-icon></a>
-        <router-link class="register" :to="{ name: 'register' }">
-          注册账户
-        </router-link>
-      </div>-->
+      <div class="user-login-other">
+        <span>其他登录方式</span>
+        <a @click="onThirdLogin('github')" title="github"><a-icon class="item-icon" type="github"></a-icon></a>
+        <a @click="onThirdLogin('wechat_enterprise')" title="企业微信"><a-icon class="item-icon" type="wechat"></a-icon></a>
+        <a @click="onThirdLogin('dingtalk')" title="钉钉"><a-icon class="item-icon" type="dingding"></a-icon></a>
+      </div>
     </a-form>
 
     <two-step-captcha
@@ -121,46 +118,7 @@
       :visible="stepCaptchaVisible"
       @success="stepCaptchaSuccess"
       @cancel="stepCaptchaCancel"></two-step-captcha>
-
-    <a-modal
-      title="登录部门选择"
-      :width="450"
-      :visible="departVisible"
-      :closable="false"
-      :maskClosable="false">
-
-      <template slot="footer">
-        <a-button type="primary" @click="departOk">确认</a-button>
-      </template>
-
-      <a-form>
-        <a-form-item
-          :labelCol="{span:4}"
-          :wrapperCol="{span:20}"
-          style="margin-bottom:10px"
-          :validate-status="validate_status">
-          <a-tooltip placement="topLeft" >
-            <template slot="title">
-              <span>您隶属于多部门，请选择登录部门</span>
-            </template>
-            <a-avatar style="backgroundColor:#87d068" icon="gold" />
-          </a-tooltip>
-          <a-select @change="departChange" :class="{'valid-error':validate_status=='error'}" placeholder="请选择登录部门" style="margin-left:10px;width: 80%">
-            <a-icon slot="suffixIcon" type="gold" />
-            <a-select-option
-              v-for="d in departList"
-              :key="d.id"
-              :value="d.orgCode">
-              {{ d.departName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-      </a-form>
-
-
-
-    </a-modal>
-
+    <login-select-modal ref="loginSelect" @success="loginSelectOk"></login-select-modal>
   </div>
 </template>
 
@@ -172,15 +130,16 @@
   import { timeFix } from "@/utils/util"
   import Vue from 'vue'
   import { ACCESS_TOKEN ,ENCRYPTED_STRING} from "@/store/mutation-types"
-  import JGraphicCode from '@/components/jeecg/JGraphicCode'
-  import { putAction } from '@/api/manage'
-  import { postAction } from '@/api/manage'
+  import { putAction,postAction,getAction } from '@/api/manage'
   import { encryption , getEncryptedString } from '@/utils/encryption/aesEncrypt'
+  import store from '@/store/'
+  import { USER_INFO } from "@/store/mutation-types"
+  import LoginSelectModal from './LoginSelectModal.vue'
 
   export default {
     components: {
       TwoStepCaptcha,
-      JGraphicCode
+      LoginSelectModal
     },
     data () {
       return {
@@ -199,40 +158,60 @@
           time: 60,
           smsSendBtn: false,
         },
-        formLogin: {
-          username: "",
-          password: "",
-          captcha: "",
-          mobile: "",
-          rememberMe: true
-        },
         validatorRules:{
-          username:{rules: [{ required: true, message: '请输入用户名!',validator: 'click'}]},
+          username:{rules: [{ required: true, message: '请输入用户名!'},{validator: this.handleUsernameOrEmail}]},
           password:{rules: [{ required: true, message: '请输入密码!',validator: 'click'}]},
           mobile:{rules: [{validator:this.validateMobile}]},
           captcha:{rule: [{ required: true, message: '请输入验证码!'}]},
-          inputCode:{rules: [{ required: true, message: '请输入验证码!'},{validator: this.validateInputCode}]}
+          inputCode:{rules: [{ required: true, message: '请输入验证码!'}]}
         },
         verifiedCode:"",
         inputCodeContent:"",
         inputCodeNull:true,
-
-        departList:[],
-        departVisible:false,
-        departSelected:"",
         currentUsername:"",
-        validate_status:""
+        currdatetime:'',
+        randCodeImage:'',
+        requestCodeSuccess:false
       }
     },
     created () {
+      this.currdatetime = new Date().getTime();
       Vue.ls.remove(ACCESS_TOKEN)
       this.getRouterData();
+      this.handleChangeCheckCode();
       // update-begin- --- author:scott ------ date:20190805 ---- for:密码加密逻辑暂时注释掉，有点问题
       //this.getEncrypte();
       // update-end- --- author:scott ------ date:20190805 ---- for:密码加密逻辑暂时注释掉，有点问题
     },
     methods: {
-      ...mapActions([ "Login", "Logout","PhoneLogin" ]),
+      ...mapActions([ "Login", "Logout","PhoneLogin","ThirdLogin" ]),
+      //第三方登录
+      onThirdLogin(source){
+        let url = window._CONFIG['domianURL']+`/thirdLogin/render/${source}`
+        window.open(url, `login ${source}`, 'height=500, width=500, top=0, left=0, toolbar=no, menubar=no, scrollbars=no, resizable=no,location=n o, status=no')
+        let that = this;
+        let receiveMessage = function(event){
+          var origin = event.origin
+          console.log("origin",origin);
+
+          let token = event.data
+          //update-begin--Author:wangshuai  Date:20200729 for：接口在签名校验失败时返回失败的标识码 #1441--------------------
+          if (token === '登录失败') {
+            that.$message.warning(token);
+          }else{
+          //update-end--Author:wangshuai  Date:20200729 for：接口在签名校验失败时返回失败的标识码 #1441--------------------
+          console.log("event.data",token)
+          that.ThirdLogin(token).then(res=>{
+            if(res.success){
+              that.loginSuccess()
+            }else{
+              that.requestFailed(res);
+            }
+          })
+          }
+        }
+        window.addEventListener("message", receiveMessage, false);
+      },
       // handler
       handleUsernameOrEmail (rule, value, callback) {
         const regex = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+((\.[a-zA-Z0-9_-]{2,3}){1,2})$/;
@@ -249,23 +228,24 @@
       },
       handleSubmit () {
         let that = this
-        let loginParams = {
-          remember_me: that.formLogin.rememberMe
-        };
+        let loginParams = {};
         that.loginBtn = true;
-        // 使用账户密码登陆
+        // 使用账户密码登录
         if (that.customActiveKey === 'tab1') {
-          that.form.validateFields([ 'username', 'password','inputCode' ], { force: true }, (err, values) => {
+          that.form.validateFields([ 'username', 'password','inputCode', 'rememberMe' ], { force: true }, (err, values) => {
             if (!err) {
               loginParams.username = values.username
               // update-begin- --- author:scott ------ date:20190805 ---- for:密码加密逻辑暂时注释掉，有点问题
               //loginParams.password = md5(values.password)
               //loginParams.password = encryption(values.password,that.encryptedString.key,that.encryptedString.iv)
               loginParams.password = values.password
+              loginParams.remember_me = values.rememberMe
               // update-begin- --- author:scott ------ date:20190805 ---- for:密码加密逻辑暂时注释掉，有点问题
-
+              loginParams.captcha = that.inputCodeContent
+              loginParams.checkKey = that.currdatetime
+              console.log("登录参数",loginParams)
               that.Login(loginParams).then((res) => {
-                this.departConfirm(res)
+                this.$refs.loginSelect.show(res.result)
               }).catch((err) => {
                 that.requestFailed(err);
               });
@@ -275,15 +255,16 @@
               that.loginBtn = false;
             }
           })
-          // 使用手机号登陆
+          // 使用手机号登录
         } else {
-          that.form.validateFields([ 'mobile', 'captcha' ], { force: true }, (err, values) => {
+          that.form.validateFields([ 'mobile', 'captcha', 'rememberMe' ], { force: true }, (err, values) => {
             if (!err) {
               loginParams.mobile = values.mobile
               loginParams.captcha = values.captcha
+              loginParams.remember_me = values.rememberMe
               that.PhoneLogin(loginParams).then((res) => {
                 console.log(res.result);
-                this.departConfirm(res)
+                this.$refs.loginSelect.show(res.result)
               }).catch((err) => {
                 that.requestFailed(err);
               })
@@ -341,9 +322,27 @@
           this.stepCaptchaVisible = false
         })
       },
+      handleChangeCheckCode(){
+        this.currdatetime = new Date().getTime();
+        getAction(`/sys/randomImage/${this.currdatetime}`).then(res=>{
+          if(res.success){
+            this.randCodeImage = res.result
+            this.requestCodeSuccess=true
+          }else{
+            this.$message.error(res.message)
+            this.requestCodeSuccess=false
+          }
+        }).catch(()=>{
+          this.requestCodeSuccess=false
+        })
+      },
       loginSuccess () {
-        this.loginBtn = false
-        this.$router.push({ name: "dashboard" })
+        // update-begin- author:sunjianlei --- date:20190812 --- for: 登录成功后不解除禁用按钮，防止多次点击
+        // this.loginBtn = false
+        // update-end- author:sunjianlei --- date:20190812 --- for: 登录成功后不解除禁用按钮，防止多次点击
+        this.$router.push({ path: "/dashboard/analysis" }).catch(()=>{
+          console.log('登录跳转首页出错,这个错误从哪里来的')
+        })
         this.$notification.success({
           message: '欢迎',
           description: `${timeFix()}，欢迎回来`,
@@ -384,74 +383,18 @@
       },
       inputCodeChange(e){
         this.inputCodeContent = e.target.value
-        if(!e.target.value||0==e.target.value){
-          this.inputCodeNull=true
-        }else{
-          this.inputCodeContent = this.inputCodeContent.toLowerCase()
-          this.inputCodeNull=false
-        }
       },
-      departConfirm(res){
-        if(res.success){
-          let multi_depart = res.result.multi_depart
-          //0:无部门 1:一个部门 2:多个部门
-          if(multi_depart==0){
-            this.loginSuccess()
-            this.$notification.warn({
-              message: '提示',
-              description: `您尚未归属部门,请确认账号信息`,
-              duration:3
-            });
-          }else if(multi_depart==2){
-            this.departVisible=true
-            this.currentUsername=this.form.getFieldValue("username")
-            this.departList = res.result.departs
-          }else {
-            this.loginSuccess()
-          }
-        }else{
-          this.requestFailed(res)
-          this.Logout();
-        }
-      },
-      departOk(){
-        if(!this.departSelected){
-          this.validate_status='error'
-          return false
-        }
-       let obj = {
-          orgCode:this.departSelected,
-          username:this.form.getFieldValue("username")
-        }
-        putAction("/sys/selectDepart",obj).then(res=>{
-          if(res.success){
-            this.departClear()
-            this.loginSuccess()
-          }else{
-            this.requestFailed(res)
-            this.Logout().then(()=>{
-              this.departClear()
-            });
-          }
-        })
-      },
-      departClear(){
-        this.departList=[]
-        this.departSelected=""
-        this.currentUsername=""
-        this.departVisible=false
-        this.validate_status=''
-      },
-      departChange(value){
-        this.validate_status='success'
-        this.departSelected = value
+      loginSelectOk(){
+        this.loginSuccess()
       },
     getRouterData(){
       this.$nextTick(() => {
-        this.form.setFieldsValue({
-        'username': this.$route.params.username
-      });
-    })
+        if (this.$route.params.username) {
+          this.form.setFieldsValue({
+            'username': this.$route.params.username
+          });
+        }
+      })
     },
     //获取密码加密规则
     getEncrypte(){
@@ -468,7 +411,7 @@
   }
 </script>
 
-<style lang="scss" scoped>
+<style lang="less" scoped>
 
   .user-layout-login {
     label {

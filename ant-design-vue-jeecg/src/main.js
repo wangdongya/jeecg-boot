@@ -6,7 +6,9 @@ import store from './store/'
 
 import { VueAxios } from "@/utils/request"
 
-import Antd from 'ant-design-vue'
+import Antd, { version } from 'ant-design-vue'
+console.log('ant-design-vue version:', version)
+
 import Viser from 'viser-vue'
 import 'ant-design-vue/dist/antd.less';  // or 'ant-design-vue/dist/antd.less'
 
@@ -14,10 +16,12 @@ import '@/permission' // permission control
 import '@/utils/filter' // base filter
 import Print from 'vue-print-nb-jeecg'
 /*import '@babel/polyfill'*/
-import VueApexCharts from 'vue-apexcharts'
-
 import preview from 'vue-photo-preview'
 import 'vue-photo-preview/dist/skin.css'
+
+require('@jeecg/antd-online-mini')
+require('@jeecg/antd-online-mini/dist/OnlineForm.css')
+
 
 import {
   ACCESS_TOKEN,
@@ -38,6 +42,10 @@ import JDictSelectTag from './components/dict/index.js'
 import hasPermission from '@/utils/hasPermission'
 import vueBus from '@/utils/vueBus';
 import JeecgComponents from '@/components/jeecg/index'
+import '@/assets/less/JAreaLinkage.less'
+import VueAreaLinkage from 'vue-area-linkage'
+import '@/components/jeecg/JVxeTable/install'
+import '@/components/JVxeCells/install'
 
 Vue.config.productionTip = false
 Vue.use(Storage, config.storageOptions)
@@ -47,11 +55,10 @@ Vue.use(Viser)
 Vue.use(hasPermission)
 Vue.use(JDictSelectTag)
 Vue.use(Print)
-Vue.use(VueApexCharts)
-Vue.component('apexchart', VueApexCharts)
 Vue.use(preview)
 Vue.use(vueBus);
 Vue.use(JeecgComponents);
+Vue.use(VueAreaLinkage);
 
 new Vue({
   router,
@@ -67,7 +74,7 @@ new Vue({
     store.commit('TOGGLE_WEAK', Vue.ls.get(DEFAULT_COLOR_WEAK, config.colorWeak))
     store.commit('TOGGLE_COLOR', Vue.ls.get(DEFAULT_COLOR, config.primaryColor))
     store.commit('SET_TOKEN', Vue.ls.get(ACCESS_TOKEN))
-    store.commit('SET_MULTI_PAGE',Vue.ls.get(DEFAULT_MULTI_PAGE,true))
+    store.commit('SET_MULTI_PAGE',Vue.ls.get(DEFAULT_MULTI_PAGE,config.multipage))
   },
   render: h => h(App)
 }).$mount('#app')

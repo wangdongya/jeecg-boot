@@ -11,7 +11,7 @@
       :modal-width="modalWidth"
       :multi="multi"
       :rootOpened="rootOpened"
-      :depart-id="value"
+      :depart-id="departIds"
       @ok="handleOK"
       @initComp="initComp"/>
   </div>
@@ -48,6 +48,11 @@
         type: Boolean,
         required: false,
         default: false
+      },
+      // 自定义返回字段，默认返回 id
+      customReturnField: {
+        type: String,
+        default: 'id'
       }
     },
     data(){
@@ -63,31 +68,41 @@
     },
     watch:{
       value(val){
-        this.departIds = val
+        if (this.customReturnField === 'id') {
+          this.departIds = val
+        }
       }
     },
     methods:{
       initComp(departNames){
         this.departNames = departNames
+        //update-begin-author:lvdandan date:20200513 for:TESTA-438 部门选择组件自定义返回值，数据无法回填
+        //TODO 当返回字段为部门名称时会有问题,因为部门名称不唯一
+        //返回字段不为id时，根据返回字段获取id
+        if(this.customReturnField !== 'id' && this.value){
+          const dataList = this.$refs.innerDepartSelectModal.dataList;
+          console.log('this.value',this.value)
+          this.departIds = this.value.split(',').map(item => {
+            const data = dataList.filter(d=>d[this.customReturnField] === item)
+            return data.length > 0 ? data[0].id : ''
+          }).join(',')
+        }
+        //update-end-author:lvdandan date:20200513 for:TESTA-438 部门选择组件自定义返回值，数据无法回填
       },
       openModal(){
         this.$refs.innerDepartSelectModal.show()
       },
-      handleOK(rows,idstr){
-        console.log("当前选中部门",rows)
-        console.log("当前选中部门ID",idstr)
-        if(!rows){
+      handleOK(rows, idstr) {
+        let value = ''
+        if (!rows && rows.length <= 0) {
           this.departNames = ''
-          this.departIds=''
-        }else{
-          let temp = ''
-          for(let item of rows){
-            temp+=','+item.departName
-          }
-          this.departNames = temp.substring(1)
-          this.departIds=idstr
+          this.departIds = ''
+        } else {
+          value = rows.map(row => row[this.customReturnField]).join(',')
+          this.departNames = rows.map(row => row['departName']).join(',')
+          this.departIds = idstr
         }
-        this.$emit("change",this.departIds)
+        this.$emit("change", value)
       },
       getDepartNames(){
         return this.departNames
